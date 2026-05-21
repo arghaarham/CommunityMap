@@ -73,21 +73,38 @@ select {
     linear-gradient(180deg, #46505a 0%, #1c2630 48%, #071826 100%);
 }
 
-.scroll-reveal {
-  animation: reveal linear both;
-  animation-timeline: view();
-  animation-range: entry 12% cover 34%;
+/* About section – logo assembly */
+.about-logo-wrapper {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  margin: 0 auto;
 }
 
-@keyframes reveal {
-  from {
-    opacity: 0.72;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.about-pin {
+  position: absolute;
+  width: 50%;
+  top: 0;
+  left: 25%;
+  z-index: 2;
+}
+
+.about-map {
+  position: absolute;
+  width: 80%;
+  bottom: 0;
+  left: 10%;
+  z-index: 1;
+}
+
+/* Footer */
+.site-footer {
+  background: var(--asphalt);
+  color: rgba(255, 255, 255, 0.72);
+  padding: 3rem 1rem 2rem;
+}
+.site-footer a:hover {
+  color: var(--amber);
 }
 
 @media (prefers-reduced-motion: reduce) {

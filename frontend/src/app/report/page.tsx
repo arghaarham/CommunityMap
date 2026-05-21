@@ -1,4 +1,5 @@
 import { SiteHeader } from "@/components/layout/site-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { ReportForm } from "@/components/report/report-form";
 
 export default function ReportPage() {
@@ -8,6 +9,7 @@ export default function ReportPage() {
       <main className="min-h-screen bg-[var(--background)] px-4 py-8 sm:px-6 lg:px-8">
         <ReportForm />
       </main>
+      <SiteFooter />
     </>
   );
 }

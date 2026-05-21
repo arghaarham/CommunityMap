@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AuthCard } from "@/components/auth/auth-card";
 import { SiteHeader } from "@/components/layout/site-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 
 export default function RegisterPage() {
   return (
@@ -17,6 +18,7 @@ export default function RegisterPage() {
           </p>
         </div>
       </main>
+      <SiteFooter />
     </>
   );
 }

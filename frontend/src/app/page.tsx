@@ -9,7 +9,9 @@ import { PublicMap } from "@/components/map/public-map";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { SiteHeader } from "@/components/layout/site-header";
+import { SiteFooter } from "@/components/layout/site-footer";
 import { HeroScene } from "@/components/landing/hero-scene";
+import { AboutSection } from "@/components/landing/about-section";
 
 const steps = [
   {
@@ -42,7 +44,10 @@ export default function HomePage() {
       <main>
         <HeroScene />
 
-        <section className="bg-white py-16 scroll-reveal">
+        {/* About Section with scroll-driven logo animation */}
+        <AboutSection />
+
+        <section className="bg-white py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
               <h2 className="text-3xl font-black text-[var(--asphalt)]">
@@ -72,7 +77,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="bg-[var(--background)] py-16 scroll-reveal">
+        <section className="bg-[var(--background)] py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
               <div>
@@ -92,7 +97,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="bg-white py-16 scroll-reveal">
+        <section className="bg-white py-16">
           <div className="mx-auto grid max-w-7xl gap-8 px-4 sm:px-6 lg:grid-cols-[0.85fr_1.15fr] lg:px-8">
             <div className="sticky top-24 h-fit">
               <h2 className="text-3xl font-black text-[var(--asphalt)]">
@@ -132,6 +137,7 @@ export default function HomePage() {
           </div>
         </section>
       </main>
+      <SiteFooter />
     </>
   );
 }

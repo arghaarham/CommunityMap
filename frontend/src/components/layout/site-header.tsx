@@ -1,6 +1,7 @@
 "use client";
 
-import { Menu, MapPin } from "lucide-react";
+import { Menu } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ButtonLink } from "@/components/ui/button";
@@ -27,9 +28,13 @@ export function SiteHeader({ dark = false }: { dark?: boolean }) {
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 font-bold">
-          <span className="flex size-8 items-center justify-center rounded-md bg-[var(--teal)] text-white">
-            <MapPin className="size-4" />
-          </span>
+          <Image
+            src="/main-logo.png"
+            alt="CommunityMap Logo"
+            width={36}
+            height={36}
+            className="rounded-md object-contain"
+          />
           CommunityMap
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
