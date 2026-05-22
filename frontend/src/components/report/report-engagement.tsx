@@ -2,7 +2,7 @@
 
 import { MessageCircle, Send, ThumbsDown, ThumbsUp } from "lucide-react";
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   addReportComment,
@@ -10,6 +10,7 @@ import {
   removeDownvote,
   removeUpvote,
   upvoteReport,
+  searchUsers,
 } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import type { Report, ReportComment } from "@/types/community-map";
@@ -28,9 +29,56 @@ export function ReportEngagement({
     initialReport.comments || [],
   );
   const [commentBody, setCommentBody] = useState("");
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [mentionResults, setMentionResults] = useState<{ username: string; name: string }[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (mentionQuery === null) {
+      setMentionResults([]);
+      return;
+    }
+    // Fetch from backend
+    const timer = setTimeout(async () => {
+      try {
+        const users = await searchUsers(mentionQuery);
+        setMentionResults(users);
+      } catch (err) {
+        console.error(err);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [mentionQuery]);
+
+  function handleCommentChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setCommentBody(val);
+    
+    const cursor = e.target.selectionStart || val.length;
+    const textBeforeCursor = val.slice(0, cursor);
+    const match = textBeforeCursor.match(/@(\w*)$/);
+    if (match) {
+      setMentionQuery(match[1].toLowerCase());
+    } else {
+      setMentionQuery(null);
+    }
+  }
+
+  function insertMention(username: string) {
+    if (!inputRef.current) return;
+    const cursor = inputRef.current.selectionStart || commentBody.length;
+    const textBeforeCursor = commentBody.slice(0, cursor);
+    const textAfterCursor = commentBody.slice(cursor);
+    const textBeforeMention = textBeforeCursor.replace(/@\w*$/, "");
+    
+    const newText = textBeforeMention + `@${username} ` + textAfterCursor;
+    setCommentBody(newText);
+    setMentionQuery(null);
+    inputRef.current.focus();
+  }
 
   // Helper to parse @username in comment body
   const parseBody = (body: string) => {
@@ -234,10 +282,28 @@ export function ReportEngagement({
             </button>
           </div>
         )}
-        <div className="mt-3 flex gap-2">
+        <div className="relative mt-3 flex gap-2">
+          {mentionQuery !== null && mentionResults.length > 0 && (
+            <div className="absolute bottom-full left-0 z-50 mb-2 w-64 rounded-md border border-[var(--border)] bg-white shadow-[var(--shadow)] overflow-hidden">
+              <div className="max-h-40 overflow-y-auto">
+                {mentionResults.map((user) => (
+                  <button
+                    key={user.username}
+                    type="button"
+                    onClick={() => insertMention(user.username)}
+                    className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-[var(--surface-strong)]"
+                  >
+                    <span className="text-sm font-bold text-[var(--asphalt)]">{user.name}</span>
+                    <span className="text-xs text-[var(--muted)]">@{user.username}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <input
+            ref={inputRef}
             value={commentBody}
-            onChange={(event) => setCommentBody(event.target.value)}
+            onChange={handleCommentChange}
             className="min-h-10 flex-1 rounded-md border border-[var(--border)] px-3 text-sm outline-none focus:border-[var(--teal)]"
             placeholder={replyingTo ? `Balas @${replyingTo.username}...` : "Tulis komentar..."}
           />

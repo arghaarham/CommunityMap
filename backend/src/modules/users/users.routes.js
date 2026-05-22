@@ -4,6 +4,31 @@ const { assert } = require("../../lib/http");
 
 const router = express.Router();
 
+router.get("/search", async (req, res, next) => {
+  try {
+    const q = req.query.q || "";
+    if (!q) {
+      return res.json({ data: { users: [] } });
+    }
+    const result = await query(
+      `
+        SELECT username, full_name
+        FROM users
+        WHERE username ILIKE $1 OR full_name ILIKE $1
+        LIMIT 5
+      `,
+      [`%${q}%`]
+    );
+    res.json({
+      data: {
+        users: result.rows.map((r) => ({ username: r.username, name: r.full_name })),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get("/:username", async (req, res, next) => {
   try {
     const { username } = req.params;

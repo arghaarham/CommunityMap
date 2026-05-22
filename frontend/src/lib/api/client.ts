@@ -234,3 +234,8 @@ export async function downloadAdminReportsCsv() {
 
   return response.blob();
 }
+
+export async function searchUsers(query: string) {
+  const data = await clientRequest<{ users: { username: string; name: string }[] }>(`/users/search?q=${encodeURIComponent(query)}`);
+  return data.users;
+}
