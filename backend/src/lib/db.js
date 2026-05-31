@@ -9,6 +9,9 @@ let databaseMode = "postgres";
 async function createPool() {
   const postgresPool = new Pool({
     connectionString: env.databaseUrl,
+    ssl: env.databaseUrl.includes("ssl=true") || env.databaseUrl.includes("sslmode=")
+      ? { rejectUnauthorized: false }
+      : undefined,
   });
 
   try {
