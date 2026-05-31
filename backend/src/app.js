@@ -14,6 +14,11 @@ const { chatsRouter } = require("./modules/chats/chats.routes");
 const { usersRouter } = require("./modules/users/users.routes");
 
 const app = express();
+
+// Percayai proxy pertama (AWS ALB / Nginx / Amplify) agar X-Forwarded-For
+// dibaca dengan benar oleh express-rate-limit dan middleware lainnya.
+app.set("trust proxy", 1);
+
 const allowedOrigins = new Set(env.frontendOrigins);
 
 app.use((req, res, next) => {
