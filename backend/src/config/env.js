@@ -11,6 +11,17 @@ function parseFrontendOrigins(value) {
     .filter(Boolean);
 }
 
+function parseDemoSeedMode(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  const allowedModes = new Set(["off", "append", "upsert", "sync"]);
+
+  if (allowedModes.has(normalized)) {
+    return normalized;
+  }
+
+  return process.env.NODE_ENV === "production" ? "off" : "sync";
+}
+
 const frontendPort = Number(process.env.FRONTEND_PORT || 3000);
 const defaultOrigins = [
   `http://localhost:${frontendPort}`,
@@ -40,6 +51,7 @@ const env = {
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
   supabaseUrl: process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "",
   supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+  demoSeedMode: parseDemoSeedMode(process.env.DEMO_SEED_MODE),
 };
 
 if (env.jwtSecret === "change-me" && env.nodeEnv === "production") {

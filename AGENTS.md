@@ -25,7 +25,7 @@ Clean stuck ports and Next.js cache: `npm run dev:clean`
 
 ## Key Non-Obvious Facts
 
-- **Backend auto-migrates and seeds on startup**: `initializeDatabase()` in `backend/src/lib/bootstrap.js` runs schema DDL + inserts 2 demo users + 40 seed reports every boot. No separate migration command needed.
+- **Backend auto-migrates on startup, but demo seeding is mode-based**: `initializeDatabase()` in `backend/src/lib/bootstrap.js` always runs schema DDL. Demo seed mode defaults to `sync` in development and `off` in production, with manual refresh available via `npm run seed:demo` or `npm run seed:demo:sync`.
 - **Frontend proxies API via Next.js rewrites**: `/api/*` requests from the browser are rewritten to `http://127.0.0.1:4000/api/*` (configurable via `INTERNAL_API_URL`). Server-side RSC fetches hit the backend directly.
 - **Lint is frontend-only**: `npm run lint` at root runs `eslint .` inside `frontend/`. Backend has no lint script wired up.
 - **No test suite**: There is no test runner configured. Backend has ad-hoc `test-*.js` files that can be run individually with `node`.

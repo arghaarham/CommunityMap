@@ -10,6 +10,8 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "stack:up": "run.bat",
+    "seed:demo": "npm run seed:demo --prefix backend -- append",
+    "seed:demo:sync": "npm run seed:demo --prefix backend -- sync",
     "lint": "npm run lint --prefix frontend"
   },
   "devDependencies": {
