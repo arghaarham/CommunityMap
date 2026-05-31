@@ -22,14 +22,24 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-function setAuthCookie(res, token) {
-  res.cookie(env.authCookieName, token, {
+function cookieOptions(extra = {}) {
+  const isProduction = env.nodeEnv === "production";
+  return {
     httpOnly: true,
-    sameSite: "lax",
-    secure: env.nodeEnv === "production",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    // "none" diperlukan agar cookie bisa dikirim cross-site (Amplify → EC2).
+    // "lax" cukup di lokal karena frontend & backend same-origin via proxy.
+    sameSite: isProduction ? "none" : "lax",
+    // sameSite "none" wajib diikuti secure: true (persyaratan browser).
+    secure: isProduction,
     path: "/",
-  });
+    ...extra,
+  };
+}
+
+function setAuthCookie(res, token) {
+  res.cookie(env.authCookieName, token, cookieOptions({
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  }));
 }
 
 router.post("/register", async (req, res, next) => {
@@ -102,12 +112,7 @@ router.post("/login", loginLimiter, async (req, res, next) => {
 });
 
 router.post("/logout", async (_req, res) => {
-  res.clearCookie(env.authCookieName, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: env.nodeEnv === "production",
-    path: "/",
-  });
+  res.clearCookie(env.authCookieName, cookieOptions());
 
   res.json({
     data: {

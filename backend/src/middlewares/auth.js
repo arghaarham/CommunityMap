@@ -30,10 +30,11 @@ async function attachCurrentUser(req, res, next) {
     req.user = result.rows[0] || null;
 
     if (!req.user && req.cookies?.[env.authCookieName]) {
+      const isProduction = env.nodeEnv === "production";
       res.clearCookie(env.authCookieName, {
         httpOnly: true,
-        sameSite: "lax",
-        secure: env.nodeEnv === "production",
+        sameSite: isProduction ? "none" : "lax",
+        secure: isProduction,
         path: "/",
       });
     }
