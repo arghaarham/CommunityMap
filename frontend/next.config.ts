@@ -19,11 +19,11 @@ const nextConfig: NextConfig = {
         port: "4000",
         pathname: "/uploads/**",
       },
-      ...(process.env.AWS_S3_BUCKET
+      ...(process.env.S3_BUCKET || process.env.AWS_S3_BUCKET
         ? [
             {
               protocol: "https" as const,
-              hostname: `${process.env.AWS_S3_BUCKET}.s3.${process.env.AWS_REGION || "ap-southeast-3"}.amazonaws.com`,
+              hostname: `${process.env.S3_BUCKET || process.env.AWS_S3_BUCKET}.s3.${process.env.S3_REGION || process.env.AWS_REGION || "ap-southeast-3"}.amazonaws.com`,
               pathname: "/**",
             },
           ]
