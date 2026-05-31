@@ -3,7 +3,7 @@ const { verifyToken } = require("../lib/auth");
 const { query } = require("../lib/db");
 const { HttpError } = require("../lib/http");
 
-async function attachCurrentUser(req, _res, next) {
+async function attachCurrentUser(req, res, next) {
   const bearerToken = req.headers.authorization?.startsWith("Bearer ")
     ? req.headers.authorization.slice(7)
     : null;
@@ -28,6 +28,16 @@ async function attachCurrentUser(req, _res, next) {
     );
 
     req.user = result.rows[0] || null;
+
+    if (!req.user && req.cookies?.[env.authCookieName]) {
+      res.clearCookie(env.authCookieName, {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: env.nodeEnv === "production",
+        path: "/",
+      });
+    }
+
     next();
   } catch (_error) {
     req.user = null;
