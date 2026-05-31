@@ -39,6 +39,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
           {(["citizen", "admin"] as UserRole[]).map((item) => (
             <button
               key={item}
+              type="button"
               onClick={() => switchRole(item)}
               className={
                 role === item
@@ -55,7 +56,54 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
           Akun yang dibuat dari sini otomatis bertipe Warga.
         </div>
       )}
-      <form className="mt-5 flex flex-col gap-4">
+      <form
+        className="mt-5 flex flex-col gap-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          startTransition(async () => {
+            try {
+              setFeedback(null);
+
+              const trimmedEmail = email.trim();
+              const trimmedPassword = password;
+
+              if (!trimmedEmail || !trimmedPassword) {
+                setFeedback("Email dan password wajib diisi.");
+                return;
+              }
+
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+                setFeedback("Format email tidak valid.");
+                return;
+              }
+
+              if (isRegister) {
+                const trimmedUsername = username.trim();
+                const trimmedFullName = fullName.trim();
+                if (!trimmedUsername || !trimmedFullName) {
+                  setFeedback("Username dan nama lengkap wajib diisi.");
+                  return;
+                }
+                await register({
+                  username: trimmedUsername,
+                  fullName: trimmedFullName,
+                  email: trimmedEmail,
+                  password: trimmedPassword,
+                  role: "citizen",
+                });
+                window.location.assign("/settings");
+              } else {
+                await login({ email: trimmedEmail, password: trimmedPassword });
+                window.location.assign(role === "admin" ? "/admin" : "/history");
+              }
+            } catch (error) {
+              setFeedback(
+                error instanceof Error ? error.message : "Autentikasi gagal.",
+              );
+            }
+          });
+        }}
+      >
         {feedback && (
           <div className="rounded-lg border border-[rgb(239_59_45_/_24%)] bg-[rgb(239_59_45_/_8%)] px-4 py-3 text-sm text-[var(--danger)]">
             {feedback}
@@ -95,29 +143,7 @@ export function AuthCard({ mode }: { mode: "login" | "register" }) {
           value={password}
           onChange={setPassword}
         />
-        <Button
-          type="button"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
-              try {
-                setFeedback(null);
-
-                if (isRegister) {
-                  await register({ username, fullName, email, password, role: "citizen" });
-                  window.location.assign("/settings"); // Redirect to settings to setup profile picture
-                } else {
-                  await login({ email, password });
-                  window.location.assign(role === "admin" ? "/admin" : "/history");
-                }
-              } catch (error) {
-                setFeedback(
-                  error instanceof Error ? error.message : "Autentikasi gagal.",
-                );
-              }
-            })
-          }
-        >
+        <Button type="submit" disabled={pending}>
           {pending ? "Memproses..." : isRegister ? "Daftar" : "Masuk"}
         </Button>
       </form>
