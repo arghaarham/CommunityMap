@@ -42,4 +42,11 @@ const env = {
   supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "",
 };
 
+if (env.jwtSecret === "change-me" && env.nodeEnv === "production") {
+  console.warn(
+    "[SECURITY] JWT_SECRET is set to the default value 'change-me'. " +
+    "Set a strong secret via the JWT_SECRET environment variable before deploying to production.",
+  );
+}
+
 module.exports = { env };
