@@ -5,6 +5,7 @@ import { MessageSquare, Send } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getChatMessages, sendChatMessage, type ChatMessage } from "@/lib/api/client";
+import { subscribeToChat } from "@/lib/realtime";
 import type { AppUser, Report } from "@/types/community-map";
 
 export function ReportChat({
@@ -39,6 +40,19 @@ export function ReportChat({
         setFeedback("Gagal memuat pesan.");
         setIsLoading(false);
       });
+  }, [report.id, hasAccess]);
+
+  useEffect(() => {
+    if (!hasAccess) return;
+
+    return subscribeToChat(report.id, (payload) => {
+      setMessages((current) => {
+        if (current.some((msg) => msg.id === payload.message.id)) {
+          return current;
+        }
+        return [...current, payload.message];
+      });
+    });
   }, [report.id, hasAccess]);
 
   useEffect(() => {

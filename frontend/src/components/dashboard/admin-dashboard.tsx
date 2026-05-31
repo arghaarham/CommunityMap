@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   Timer,
 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useEffect } from "react";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { PublicMap } from "@/components/map/public-map";
 import { MetricCard } from "@/components/dashboard/metric-card";
@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getCategory, statusLabels } from "@/features/reports/catalog";
 import { downloadAdminReportsCsv, verifyReport } from "@/lib/api/client";
+import { subscribeToReports } from "@/lib/realtime";
 import { cn } from "@/lib/utils";
 import type { AppUser, Report, ReportStatus } from "@/types/community-map";
 
@@ -44,6 +45,24 @@ export function AdminDashboard({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    return subscribeToReports({
+      onStatusChanged: (payload) => {
+        setReports((current) =>
+          current.map((report) =>
+            report.id === payload.reportId
+              ? { ...report, status: payload.newStatus as ReportStatus, updatedAt: payload.updatedAt }
+              : report,
+          ),
+        );
+      },
+      onNewReport: (payload) => {
+        const report = payload.report as Report;
+        setReports((current) => [report, ...current]);
+      },
+    });
+  }, []);
 
   const filteredReports = useMemo(
     () =>

@@ -1,10 +1,9 @@
 const express = require("express");
-const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
-const { env } = require("../../config/env");
 const { requireAuth } = require("../../middlewares/auth");
 const { HttpError } = require("../../lib/http");
+const { uploadFile, isS3Enabled } = require("../../lib/storage");
 
 const router = express.Router();
 const allowedPurposes = new Set(["report", "resolution", "avatar"]);
@@ -14,10 +13,6 @@ const allowedMimeTypes = new Set([
   "image/webp",
   "image/gif",
 ]);
-
-function ensureDir(dir) {
-  fs.mkdirSync(dir, { recursive: true });
-}
 
 function safeExtension(file) {
   const fromName = path.extname(file.originalname || "").toLowerCase();
@@ -31,25 +26,12 @@ function safeExtension(file) {
   return ".jpg";
 }
 
-const storage = multer.diskStorage({
-  destination(req, _file, callback) {
-    const purpose = req.body?.purpose || "report";
-    const targetPurpose = allowedPurposes.has(purpose) ? purpose : "report";
-    const targetDir = path.join(env.uploadDir, targetPurpose);
-    ensureDir(targetDir);
-    callback(null, targetDir);
-  },
-  filename(_req, file, callback) {
-    callback(null, `${Date.now()}-${cryptoRandom()}${safeExtension(file)}`);
-  },
-});
-
 function cryptoRandom() {
   return Math.random().toString(36).slice(2, 10);
 }
 
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: {
     fileSize: 5 * 1024 * 1024,
   },
@@ -71,7 +53,7 @@ const upload = multer({
 });
 
 router.post("/", requireAuth, (req, res, next) => {
-  upload.single("file")(req, res, (error) => {
+  upload.single("file")(req, res, async (error) => {
     if (error) {
       if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
         next(
@@ -107,15 +89,25 @@ router.post("/", requireAuth, (req, res, next) => {
       return;
     }
 
-    const storageKey = path.relative(env.uploadDir, req.file.path).replaceAll(path.sep, "/");
-    const publicBaseUrl = `${req.protocol}://${req.get("host")}`;
-    res.status(201).json({
-      data: {
-        imageUrl: `${publicBaseUrl}/uploads/${storageKey}`,
-        storageKey,
-        alt: req.body?.alt || req.file.originalname || "Gambar CommunityMap",
-      },
-    });
+    try {
+      const filename = `${Date.now()}-${cryptoRandom()}${safeExtension(req.file)}`;
+      const key = `${purpose}/${filename}`;
+      const result = await uploadFile(key, req.file.buffer, req.file.mimetype);
+
+      const imageUrl = isS3Enabled()
+        ? result.url
+        : `${req.protocol}://${req.get("host")}/uploads/${result.storageKey}`;
+
+      res.status(201).json({
+        data: {
+          imageUrl,
+          storageKey: result.storageKey,
+          alt: req.body?.alt || req.file.originalname || "Gambar CommunityMap",
+        },
+      });
+    } catch (uploadError) {
+      next(uploadError);
+    }
   });
 });
 

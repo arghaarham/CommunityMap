@@ -1,5 +1,6 @@
 const express = require("express");
 const { requireRole } = require("../../middlewares/auth");
+const { broadcast } = require("../../lib/broadcast");
 const {
   getAdminStats,
   getReportByReferenceCode,
@@ -91,6 +92,12 @@ router.patch("/reports/:id/verify", async (req, res, next) => {
       },
     );
 
+    broadcast("reports", "status-changed", {
+      reportId: report.id,
+      newStatus: report.status,
+      updatedAt: report.updatedAt,
+    });
+
     res.json({
       data: report,
     });
@@ -111,6 +118,12 @@ router.patch("/reports/:id/status", async (req, res, next) => {
       },
     );
 
+    broadcast("reports", "status-changed", {
+      reportId: report.id,
+      newStatus: report.status,
+      updatedAt: report.updatedAt,
+    });
+
     res.json({
       data: report,
     });
@@ -126,6 +139,12 @@ router.patch("/reports/:id/reject", async (req, res, next) => {
       req.body?.reason,
       req.user.id,
     );
+
+    broadcast("reports", "status-changed", {
+      reportId: report.id,
+      newStatus: report.status,
+      updatedAt: report.updatedAt,
+    });
 
     res.json({
       data: report,

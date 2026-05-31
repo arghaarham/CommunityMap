@@ -1,5 +1,6 @@
 const express = require("express");
 const { requireAuth } = require("../../middlewares/auth");
+const { broadcast } = require("../../lib/broadcast");
 const { HttpError } = require("../../lib/http");
 const {
   addComment,
@@ -70,6 +71,9 @@ router.get("/:id", async (req, res, next) => {
 router.post("/", requireAuth, async (req, res, next) => {
   try {
     const report = await createReport(req.body || {}, req.user.id);
+
+    broadcast("reports", "new-report", { report });
+
     res.status(201).json({
       data: report,
     });
@@ -151,6 +155,12 @@ router.post("/:id/comments", requireAuth, async (req, res, next) => {
   try {
     const { body, parentId } = req.body || {};
     const comment = await addComment(req.params.id, req.user, body, parentId);
+
+    broadcast("reports", "new-comment", {
+      reportId: req.params.id,
+      comment,
+    });
+
     res.status(201).json({
       data: comment,
     });

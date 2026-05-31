@@ -5,6 +5,7 @@ const crypto = require("crypto");
 const { env } = require("./config/env");
 const { attachCurrentUser } = require("./middlewares/auth");
 const { errorHandler, notFoundHandler } = require("./middlewares/error-handler");
+const { isS3Enabled } = require("./lib/storage");
 const { authRouter } = require("./modules/auth/auth.routes");
 const { reportsRouter } = require("./modules/reports/reports.routes");
 const { adminRouter } = require("./modules/admin/admin.routes");
@@ -50,7 +51,9 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 app.use(cookieParser());
 app.use(attachCurrentUser);
-app.use("/uploads", express.static(env.uploadDir));
+if (!isS3Enabled()) {
+  app.use("/uploads", express.static(env.uploadDir));
+}
 
 app.get("/api/health", (_req, res) => {
   res.json({

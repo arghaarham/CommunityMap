@@ -12,8 +12,9 @@ import {
   upvoteReport,
   searchUsers,
 } from "@/lib/api/client";
+import { subscribeToReports } from "@/lib/realtime";
 import { cn } from "@/lib/utils";
-import type { Report, ReportComment } from "@/types/community-map";
+import type { Report, ReportComment, ReportStatus } from "@/types/community-map";
 
 export function ReportEngagement({
   report: initialReport,
@@ -35,6 +36,29 @@ export function ReportEngagement({
   const [replyingTo, setReplyingTo] = useState<{ id: string; username: string } | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    return subscribeToReports({
+      onStatusChanged: (payload) => {
+        if (payload.reportId === report.id) {
+          setReport((current) => ({
+            ...current,
+            status: payload.newStatus as ReportStatus,
+            updatedAt: payload.updatedAt,
+          }));
+        }
+      },
+      onNewComment: (payload) => {
+        if (payload.reportId === report.id) {
+          setComments((current) => [...current, payload.comment]);
+          setReport((current) => ({
+            ...current,
+            commentCount: current.commentCount + 1,
+          }));
+        }
+      },
+    });
+  }, [report.id]);
 
   useEffect(() => {
     if (mentionQuery === null) {

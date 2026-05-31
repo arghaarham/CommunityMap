@@ -34,6 +34,12 @@ const env = {
   jwtSecret: process.env.JWT_SECRET || "change-me",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || "7d",
   authCookieName: process.env.AUTH_COOKIE_NAME || "communitymap_token",
+  awsRegion: process.env.AWS_REGION || "ap-southeast-3",
+  awsS3Bucket: process.env.AWS_S3_BUCKET || "",
+  awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+  awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+  supabaseUrl: process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "",
 };
 
 module.exports = { env };
