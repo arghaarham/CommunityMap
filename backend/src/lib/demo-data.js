@@ -599,8 +599,91 @@ const demoUsers = [
 
 const adminUsers = demoUsers.filter((user) => user.role === "admin");
 const citizenUsers = demoUsers.filter((user) => user.role === "citizen");
-const statuses = ["new", "verified", "in_progress", "resolved"];
 const categorySlugs = Object.keys(categoryCatalog);
+const reportStatusPattern = [
+  "resolved",
+  "new",
+  "verified",
+  "in_progress",
+  "resolved",
+  "new",
+  "rejected",
+  "verified",
+  "in_progress",
+  "resolved",
+];
+const weatherContexts = [
+  "Cuaca pagi tadi cerah, jadi kerusakannya kelihatan jelas.",
+  "Habis hujan semalam, kondisi titik ini terasa makin parah.",
+  "Saat jam pulang kantor, titik ini langsung bikin arus melambat.",
+  "Pagi buta tadi masih banyak kendaraan logistik lewat lokasi ini.",
+  "Ketika saya cek menjelang malam, visibilitas di sekitar titik cukup terbatas.",
+];
+const urgencyHints = [
+  "Kalau bisa masuk penanganan cepat minggu ini.",
+  "Mohon jadi prioritas sebelum volume kendaraan naik lagi besok.",
+  "Semoga ada inspeksi lapangan dalam waktu dekat.",
+  "Saya khawatir kondisinya makin melebar kalau dibiarkan lebih lama.",
+  "Warga sekitar berharap ada tindak lanjut sebelum akhir pekan.",
+];
+const nearbyObservations = [
+  "Di sisi jalan juga ada antrean pendek kendaraan yang menghindar bergantian.",
+  "Beberapa pengendara terlihat menepi dulu sebelum berani melintas.",
+  "Pedagang sekitar bilang keluhan serupa sudah sering disampaikan warga.",
+  "Ada kendaraan roda dua yang harus sangat pelan saat melewati titik ini.",
+  "Akses ke permukiman sekitar ikut terasa kurang nyaman karena titiknya persis di jalur aktif.",
+];
+const titleQualifiers = [
+  "perlu penanganan",
+  "makin mengganggu",
+  "cukup rawan",
+  "perlu pengecekan",
+  "butuh tindak lanjut",
+];
+const commentTemplates = {
+  citizen: [
+    "Saya warga sekitar dan memang titik ini sudah beberapa hari bikin kendaraan melambat.",
+    "Benar, saya tadi lewat dan kondisinya sama seperti di foto laporan.",
+    "Kalau malam hari titik ini lebih susah dihindari, semoga segera ditangani.",
+    "Saya dukung laporan ini karena akses warga sekitar cukup terganggu.",
+  ],
+  admin: [
+    "Terima kasih, laporan sudah kami catat dan masuk antrean pengecekan lapangan.",
+    "Tim akan cocokkan titik koordinat dan kondisi visual pada jadwal patroli terdekat.",
+    "Mohon pantau pembaruan status, petugas wilayah sedang meninjau kebutuhan tindak lanjut.",
+    "Catatan warga sudah kami teruskan ke admin wilayah terkait untuk verifikasi.",
+  ],
+  followUp: [
+    "Saya cek lagi sore ini, kondisinya belum banyak berubah.",
+    "Warga sekitar tadi bilang genangan atau kerusakannya masih muncul di jam sibuk.",
+    "Barusan lewat lagi dan arus kendaraan masih melambat di titik yang sama.",
+    "Semoga setelah dicek ada penanganan sementara dulu supaya lebih aman.",
+  ],
+};
+const chatTemplates = {
+  citizen: [
+    "Halo admin, saya siap bantu jelaskan patokan lokasinya kalau dibutuhkan.",
+    "Untuk titiknya persis sebelum simpang utama, dekat patokan yang saya tulis di alamat.",
+    "Kalau perlu foto tambahan dari sisi sebaliknya saya bisa unggah lagi.",
+  ],
+  admin: [
+    "Siap, kami cocokkan dengan catatan tim lapangan hari ini.",
+    "Terima kasih, informasi penanda lokasi seperti ini sangat membantu.",
+    "Kalau ada perubahan kondisi mendadak, silakan balas di chat ini ya.",
+  ],
+};
+const resolutionNotes = [
+  "Tambalan awal sudah terlihat rapi dan arus kendaraan kembali normal.",
+  "Saluran di sisi jalan sudah dibersihkan sehingga air lebih cepat surut.",
+  "Petugas mengganti komponen penerangan dan area sekitar sudah jauh lebih jelas.",
+  "Penanganan sementara selesai, tinggal pemantauan lanjutan dari wilayah setempat.",
+];
+const rejectionReasons = [
+  "Lokasi laporan terduplikasi dengan aduan lain yang lebih dulu masuk pada ruas yang sama.",
+  "Foto dan titik koordinat belum cukup menunjukkan objek yang dilaporkan sehingga perlu kirim ulang.",
+  "Setelah dicek, masalah berada di area kewenangan instansi lain sehingga diteruskan terpisah.",
+];
+const reportVariantsPerRegion = 2;
 
 function addHours(date, hours) {
   return new Date(date.getTime() + hours * 60 * 60 * 1000);
@@ -614,12 +697,18 @@ function formatIso(date) {
   return date.toISOString();
 }
 
-function buildReportLogs(status, createdAt, adminId, logOffset, district) {
+function offsetCoordinate(baseValue, reportIndex, variant, direction) {
+  const multiplier = ((reportIndex % 5) - 2) * 0.0014;
+  const variantOffset = variant === 0 ? -0.0011 : 0.0016;
+  return Number((baseValue + multiplier + variantOffset * direction).toFixed(6));
+}
+
+function buildReportLogs(status, createdAt, adminId, logOffset, district, street, title) {
   const logs = [
     {
       id: makeUuid("30", logOffset),
       nextStatus: "new",
-      note: `Laporan warga dari ${district} diterima sistem.`,
+      note: `Laporan "${title}" di ${street}, ${district} diterima sistem.`,
       updatedBy: null,
       createdAt: formatIso(createdAt),
     },
@@ -630,9 +719,9 @@ function buildReportLogs(status, createdAt, adminId, logOffset, district) {
       id: makeUuid("30", logOffset + 1),
       previousStatus: "new",
       nextStatus: "verified",
-      note: "Lokasi, foto, dan kategori laporan sudah diverifikasi petugas.",
+      note: "Lokasi, foto, dan kategori laporan sudah diverifikasi petugas wilayah.",
       updatedBy: adminId,
-      createdAt: formatIso(addHours(createdAt, 8)),
+      createdAt: formatIso(addHours(createdAt, 6)),
     });
   }
 
@@ -641,7 +730,7 @@ function buildReportLogs(status, createdAt, adminId, logOffset, district) {
       id: makeUuid("30", logOffset + 2),
       previousStatus: "verified",
       nextStatus: "in_progress",
-      note: "Tim lapangan dijadwalkan turun untuk penanganan awal.",
+      note: "Tim lapangan dijadwalkan turun untuk penanganan awal dan pengamanan titik.",
       updatedBy: adminId,
       createdAt: formatIso(addDays(createdAt, 1)),
     });
@@ -652,97 +741,237 @@ function buildReportLogs(status, createdAt, adminId, logOffset, district) {
       id: makeUuid("30", logOffset + 3),
       previousStatus: "in_progress",
       nextStatus: "resolved",
-      note: "Penanganan selesai dan ruas jalan dinyatakan aman dilalui kembali.",
+      note: resolutionNotes[logOffset % resolutionNotes.length],
       updatedBy: adminId,
       createdAt: formatIso(addDays(createdAt, 3)),
+    });
+  }
+
+  if (status === "rejected") {
+    logs.push({
+      id: makeUuid("30", logOffset + 4),
+      previousStatus: "new",
+      nextStatus: "rejected",
+      note: rejectionReasons[logOffset % rejectionReasons.length],
+      updatedBy: adminId,
+      createdAt: formatIso(addHours(createdAt, 10)),
     });
   }
 
   return logs;
 }
 
-function pickUpvoterIds(reporterId, count, offset) {
+function pickParticipantIds(reporterId, count, offset, step = 1) {
   const eligible = citizenUsers.filter((user) => user.id !== reporterId);
   const safeCount = Math.max(0, Math.min(count, eligible.length));
-  const upvoters = [];
+  const participants = [];
 
   for (let index = 0; index < safeCount; index += 1) {
-    const user = eligible[(offset + index) % eligible.length];
-    upvoters.push(user.id);
+    const user = eligible[(offset + index * step) % eligible.length];
+    participants.push(user.id);
   }
 
-  return upvoters;
+  return participants;
 }
 
-function buildDescription(categorySlug, region, street, index) {
+function buildDescription(categorySlug, region, street, index, variant) {
   const category = categoryCatalog[categorySlug];
   const voice = reporterVoices[index % reporterVoices.length];
   const issue = category.issueDetails[index % category.issueDetails.length];
   const impact = category.impactDetails[(index + 1) % category.impactDetails.length];
   const followUp = category.followUps[(index + 2) % category.followUps.length];
+  const weather = weatherContexts[(index + variant) % weatherContexts.length];
+  const urgency = urgencyHints[(index + variant + 1) % urgencyHints.length];
+  const nearby = nearbyObservations[(index + variant + 2) % nearbyObservations.length];
 
-  return `${voice} di ${street}, ${region.area}, ${region.district}, ${region.province}, ${issue}. Titiknya ${region.landmark}. ${impact} ${followUp}`;
+  return `${voice} di ${street}, ${region.area}, ${region.district}, ${region.province}, ${issue}. Titiknya ${region.landmark}. ${impact} ${followUp} ${weather} ${nearby} ${urgency}`;
 }
 
-const demoReports = regionCatalog.map((region, index) => {
-  const categorySlug = categorySlugs[index % categorySlugs.length];
-  const category = categoryCatalog[categorySlug];
-  const reporter = citizenUsers[index % citizenUsers.length];
-  const admin = adminUsers[index % adminUsers.length];
-  const status = statuses[(index * 2) % statuses.length];
-  const street = region.streets[index % region.streets.length];
-  const createdAt = new Date(
-    Date.UTC(
-      2026,
-      4,
-      20 - (index % 35),
-      6 + (index % 10),
-      (index * 13) % 60,
-      0,
-    ),
-  );
-  const reportId = makeUuid("20", index + 1);
-  const logs = buildReportLogs(
-    status,
-    createdAt,
-    admin.id,
-    index * 4 + 1,
-    region.district,
-  );
-  const upvoteCount = Math.min(
-    citizenUsers.length - 1,
-    3 + (index % 8) + (status === "resolved" ? 2 : 0),
-  );
-  const referenceCode = `RPT-2026-${String(index + 1).padStart(4, "0")}`;
+function buildComments(report, reportIndex, reporter, admin) {
+  const comments = [];
+  const baseTime = new Date(report.createdAt);
+
+  comments.push({
+    id: makeUuid("40", reportIndex * 5 + 1),
+    reportId: report.id,
+    userId: citizenUsers[(reportIndex + 2) % citizenUsers.length].id,
+    parentId: null,
+    body: commentTemplates.citizen[reportIndex % commentTemplates.citizen.length],
+    createdAt: formatIso(addHours(baseTime, 2)),
+    updatedAt: formatIso(addHours(baseTime, 2)),
+  });
+
+  if (report.status !== "new") {
+    const rootCommentId = comments[0].id;
+    comments.push({
+      id: makeUuid("40", reportIndex * 5 + 2),
+      reportId: report.id,
+      userId: admin.id,
+      parentId: rootCommentId,
+      body: commentTemplates.admin[reportIndex % commentTemplates.admin.length],
+      createdAt: formatIso(addHours(baseTime, 6)),
+      updatedAt: formatIso(addHours(baseTime, 6)),
+    });
+  }
+
+  if (report.status === "in_progress" || report.status === "resolved") {
+    comments.push({
+      id: makeUuid("40", reportIndex * 5 + 3),
+      reportId: report.id,
+      userId: reporter.id,
+      parentId: null,
+      body: commentTemplates.followUp[reportIndex % commentTemplates.followUp.length],
+      createdAt: formatIso(addDays(baseTime, 1)),
+      updatedAt: formatIso(addDays(baseTime, 1)),
+    });
+  }
+
+  return comments;
+}
+
+function buildChatSeed(report, reportIndex, reporter, admin) {
+  if (report.status !== "in_progress" && report.status !== "resolved") {
+    return null;
+  }
+
+  const createdAt = new Date(report.createdAt);
+  const chatId = makeUuid("50", reportIndex + 1);
 
   return {
-    id: reportId,
-    referenceCode,
-    reporterId: reporter.id,
-    categorySlug,
-    title: `${category.titleStarts[index % category.titleStarts.length]} ${street}`,
-    description: buildDescription(categorySlug, region, street, index),
-    latitude: region.lat,
-    longitude: region.lon,
-    address: `${street} No. ${12 + ((index * 9) % 70)}, ${region.area}, ${region.district}, ${region.province}`,
-    district: region.district,
-    status,
-    isVerified: status !== "new",
-    upvoteCount,
-    createdAt: formatIso(createdAt),
-    updatedAt: logs[logs.length - 1].createdAt,
-    image: {
-      id: makeUuid("21", index + 1),
-      imageUrl: category.imageUrl,
-      storageKey: `reports/${referenceCode}/cover.svg`,
-      alt: `${category.titleStarts[index % category.titleStarts.length]} ${region.district}`,
+    chat: {
+      id: chatId,
+      reportId: report.id,
+      createdAt: formatIso(addHours(createdAt, 12)),
     },
-    logs,
-    upvoterIds: pickUpvoterIds(reporter.id, upvoteCount, index),
+    messages: [
+      {
+        id: makeUuid("51", reportIndex * 4 + 1),
+        chatId,
+        senderId: reporter.id,
+        body: chatTemplates.citizen[reportIndex % chatTemplates.citizen.length],
+        createdAt: formatIso(addHours(createdAt, 12)),
+      },
+      {
+        id: makeUuid("51", reportIndex * 4 + 2),
+        chatId,
+        senderId: admin.id,
+        body: chatTemplates.admin[reportIndex % chatTemplates.admin.length],
+        createdAt: formatIso(addHours(createdAt, 14)),
+      },
+      {
+        id: makeUuid("51", reportIndex * 4 + 3),
+        chatId,
+        senderId: reporter.id,
+        body: "Siap, nanti saya kabari kalau ada perubahan kondisi di lapangan.",
+        createdAt: formatIso(addHours(createdAt, 15)),
+      },
+    ],
   };
+}
+
+const demoReports = [];
+const demoComments = [];
+const demoChats = [];
+
+regionCatalog.forEach((region, regionIndex) => {
+  for (let variant = 0; variant < reportVariantsPerRegion; variant += 1) {
+    const reportIndex = regionIndex * reportVariantsPerRegion + variant;
+    const categorySlug = categorySlugs[(reportIndex + variant) % categorySlugs.length];
+    const category = categoryCatalog[categorySlug];
+    const reporter = citizenUsers[(reportIndex + variant) % citizenUsers.length];
+    const admin = adminUsers[(reportIndex + variant) % adminUsers.length];
+    const status = reportStatusPattern[reportIndex % reportStatusPattern.length];
+    const street = region.streets[(reportIndex + variant) % region.streets.length];
+    const createdAt = new Date(
+      Date.UTC(
+        2026,
+        4,
+        30 - (reportIndex % 42),
+        5 + (reportIndex % 12),
+        (reportIndex * 17) % 60,
+        0,
+      ),
+    );
+    const reportId = makeUuid("20", reportIndex + 1);
+    const titleBase = category.titleStarts[(reportIndex + variant) % category.titleStarts.length];
+    const title = `${titleBase} ${street} ${titleQualifiers[(reportIndex + variant) % titleQualifiers.length]}`;
+    const logs = buildReportLogs(
+      status,
+      createdAt,
+      admin.id,
+      reportIndex * 5 + 1,
+      region.district,
+      street,
+      title,
+    );
+    const upvoteCount = Math.min(
+      citizenUsers.length - 1,
+      2 + (reportIndex % 7) + (status === "resolved" ? 4 : status === "in_progress" ? 2 : 0),
+    );
+    const downvoteCount =
+      status === "rejected" ? 1 + (reportIndex % 2) : reportIndex % 6 === 0 ? 1 : 0;
+    const referenceCode = `RPT-2026-${String(reportIndex + 1).padStart(4, "0")}`;
+    const report = {
+      id: reportId,
+      referenceCode,
+      reporterId: reporter.id,
+      categorySlug,
+      title,
+      description: buildDescription(categorySlug, region, street, reportIndex, variant),
+      latitude: offsetCoordinate(region.lat, reportIndex, variant, 1),
+      longitude: offsetCoordinate(region.lon, reportIndex, variant, -1),
+      address: `${street} No. ${12 + ((reportIndex * 7) % 90)}, ${region.area}, ${region.district}, ${region.province}`,
+      district: region.district,
+      status,
+      isVerified: status === "verified" || status === "in_progress" || status === "resolved",
+      upvoteCount,
+      downvoteCount,
+      rejectionReason: status === "rejected"
+        ? rejectionReasons[reportIndex % rejectionReasons.length]
+        : null,
+      rejectedAt: status === "rejected"
+        ? formatIso(addHours(createdAt, 10))
+        : null,
+      createdAt: formatIso(createdAt),
+      updatedAt: logs[logs.length - 1].createdAt,
+      images: [
+        {
+          id: makeUuid("21", reportIndex + 1),
+          imageUrl: category.imageUrl,
+          storageKey: `reports/${referenceCode}/cover.svg`,
+          kind: "report",
+          alt: `${title} di ${region.district}`,
+        },
+        ...(status === "resolved"
+          ? [
+              {
+                id: makeUuid("22", reportIndex + 1),
+                imageUrl: "/images/report-road.svg",
+                storageKey: `reports/${referenceCode}/resolution.svg`,
+                kind: "resolution_proof",
+                alt: `Bukti penanganan untuk ${title}`,
+              },
+            ]
+          : []),
+      ],
+      logs,
+      upvoterIds: pickParticipantIds(reporter.id, upvoteCount, reportIndex, 1),
+      downvoterIds: pickParticipantIds(reporter.id, downvoteCount, reportIndex + 3, 2),
+    };
+
+    demoReports.push(report);
+    demoComments.push(...buildComments(report, reportIndex, reporter, admin));
+
+    const chatSeed = buildChatSeed(report, reportIndex, reporter, admin);
+    if (chatSeed) {
+      demoChats.push(chatSeed);
+    }
+  }
 });
 
 module.exports = {
   demoUsers,
   demoReports,
+  demoComments,
+  demoChats,
 };

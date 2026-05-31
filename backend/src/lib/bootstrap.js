@@ -1,6 +1,7 @@
 const { hashPassword } = require("./auth");
+const { env } = require("../config/env");
 const { getDatabaseMode, getPool, query, withTransaction } = require("./db");
-const { demoReports, demoUsers } = require("./demo-data");
+const { demoComments, demoChats, demoReports, demoUsers } = require("./demo-data");
 
 function buildUsername(fullName, id) {
   const base = (fullName || "user").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
@@ -279,7 +280,20 @@ async function runMigrations() {
   `);
 }
 
-async function seedDemoData() {
+async function seedDemoData(options = {}) {
+  const mode = options.mode || env.demoSeedMode;
+
+  if (mode === "off") {
+    return {
+      mode,
+      seeded: false,
+      reason: "disabled",
+      reportCount: 0,
+      commentCount: 0,
+      chatCount: 0,
+    };
+  }
+
   const passwordHashes = new Map();
 
   for (const user of demoUsers) {
@@ -287,10 +301,12 @@ async function seedDemoData() {
   }
 
   await withTransaction(async (client) => {
-    await client.query(`
-      DELETE FROM reports
-      WHERE id::text LIKE '00000000-0000-4000-8000-20%'
-    `);
+    if (mode === "sync") {
+      await client.query(`
+        DELETE FROM reports
+        WHERE id::text LIKE '00000000-0000-4000-8000-20%'
+      `);
+    }
 
     for (const user of demoUsers) {
       await client.query(
@@ -326,6 +342,30 @@ async function seedDemoData() {
       categoryResult.rows.map((row) => [row.slug, row.id]),
     );
 
+    const reportConflictClause = mode === "append"
+      ? "ON CONFLICT (id) DO NOTHING"
+      : `
+          ON CONFLICT (id) DO UPDATE
+          SET
+            reference_code = EXCLUDED.reference_code,
+            reporter_id = EXCLUDED.reporter_id,
+            category_id = EXCLUDED.category_id,
+            title = EXCLUDED.title,
+            description = EXCLUDED.description,
+            latitude = EXCLUDED.latitude,
+            longitude = EXCLUDED.longitude,
+            address = EXCLUDED.address,
+            district = EXCLUDED.district,
+            status = EXCLUDED.status,
+            is_verified = EXCLUDED.is_verified,
+            upvote_count = EXCLUDED.upvote_count,
+            downvote_count = EXCLUDED.downvote_count,
+            rejection_reason = EXCLUDED.rejection_reason,
+            rejected_at = EXCLUDED.rejected_at,
+            created_at = EXCLUDED.created_at,
+            updated_at = EXCLUDED.updated_at
+        `;
+
     for (const report of demoReports) {
       await client.query(
         `
@@ -353,25 +393,7 @@ async function seedDemoData() {
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
             $11, $12, $13, $14, $15, $16, $17, $18
           )
-          ON CONFLICT (id) DO UPDATE
-          SET
-            reference_code = EXCLUDED.reference_code,
-            reporter_id = EXCLUDED.reporter_id,
-            category_id = EXCLUDED.category_id,
-            title = EXCLUDED.title,
-            description = EXCLUDED.description,
-            latitude = EXCLUDED.latitude,
-            longitude = EXCLUDED.longitude,
-            address = EXCLUDED.address,
-            district = EXCLUDED.district,
-            status = EXCLUDED.status,
-            is_verified = EXCLUDED.is_verified,
-            upvote_count = EXCLUDED.upvote_count,
-            downvote_count = EXCLUDED.downvote_count,
-            rejection_reason = EXCLUDED.rejection_reason,
-            rejected_at = EXCLUDED.rejected_at,
-            created_at = EXCLUDED.created_at,
-            updated_at = EXCLUDED.updated_at
+          ${reportConflictClause}
         `,
         [
           report.id,
@@ -395,19 +417,29 @@ async function seedDemoData() {
         ],
       );
 
-      await client.query(
-        `
-          INSERT INTO report_images (id, report_id, image_url, storage_key, kind, alt_text)
-          VALUES ($1, $2, $3, $4, 'report', $5)
-        `,
-        [
-          report.image.id,
-          report.id,
-          report.image.imageUrl,
-          report.image.storageKey,
-          report.image.alt,
-        ],
-      );
+      for (const image of report.images || [report.image]) {
+        await client.query(
+          `
+            INSERT INTO report_images (id, report_id, image_url, storage_key, kind, alt_text)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (id) DO UPDATE
+            SET
+              report_id = EXCLUDED.report_id,
+              image_url = EXCLUDED.image_url,
+              storage_key = EXCLUDED.storage_key,
+              kind = EXCLUDED.kind,
+              alt_text = EXCLUDED.alt_text
+          `,
+          [
+            image.id,
+            report.id,
+            image.imageUrl,
+            image.storageKey,
+            image.kind || "report",
+            image.alt,
+          ],
+        );
+      }
 
       for (const log of report.logs) {
         await client.query(
@@ -422,6 +454,14 @@ async function seedDemoData() {
               created_at
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (id) DO UPDATE
+            SET
+              report_id = EXCLUDED.report_id,
+              previous_status = EXCLUDED.previous_status,
+              next_status = EXCLUDED.next_status,
+              note = EXCLUDED.note,
+              updated_by = EXCLUDED.updated_by,
+              created_at = EXCLUDED.created_at
           `,
           [
             log.id,
@@ -457,14 +497,107 @@ async function seedDemoData() {
         );
       }
     }
+
+    for (const comment of demoComments) {
+      await client.query(
+        `
+          INSERT INTO report_comments (
+            id,
+            report_id,
+            user_id,
+            parent_id,
+            body,
+            created_at,
+            updated_at
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          ON CONFLICT (id) DO UPDATE
+          SET
+            report_id = EXCLUDED.report_id,
+            user_id = EXCLUDED.user_id,
+            parent_id = EXCLUDED.parent_id,
+            body = EXCLUDED.body,
+            created_at = EXCLUDED.created_at,
+            updated_at = EXCLUDED.updated_at
+        `,
+        [
+          comment.id,
+          comment.reportId,
+          comment.userId,
+          comment.parentId,
+          comment.body,
+          comment.createdAt,
+          comment.updatedAt,
+        ],
+      );
+    }
+
+    for (const chatSeed of demoChats) {
+      await client.query(
+        `
+          INSERT INTO report_chats (id, report_id, created_at)
+          VALUES ($1, $2, $3)
+          ON CONFLICT (report_id) DO UPDATE
+          SET created_at = EXCLUDED.created_at
+        `,
+        [chatSeed.chat.id, chatSeed.chat.reportId, chatSeed.chat.createdAt],
+      );
+
+      for (const message of chatSeed.messages) {
+        await client.query(
+          `
+            INSERT INTO report_chat_messages (
+              id,
+              chat_id,
+              sender_id,
+              body,
+              created_at
+            )
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO UPDATE
+            SET
+              chat_id = EXCLUDED.chat_id,
+              sender_id = EXCLUDED.sender_id,
+              body = EXCLUDED.body,
+              created_at = EXCLUDED.created_at
+          `,
+          [
+            message.id,
+            chatSeed.chat.id,
+            message.senderId,
+            message.body,
+            message.createdAt,
+          ],
+        );
+      }
+    }
   });
+
+  return {
+    mode,
+    seeded: true,
+    reason: "completed",
+    reportCount: demoReports.length,
+    commentCount: demoComments.length,
+    chatCount: demoChats.length,
+  };
 }
 
 async function initializeDatabase() {
   await runMigrations();
-  await seedDemoData();
+  const seedResult = await seedDemoData();
+
+  if (seedResult.seeded) {
+    console.log(
+      `[seed] demo data mode=${seedResult.mode} reports=${seedResult.reportCount} comments=${seedResult.commentCount} chats=${seedResult.chatCount}`,
+    );
+  } else {
+    console.log(`[seed] demo data skipped (mode=${seedResult.mode})`);
+  }
 }
 
 module.exports = {
   initializeDatabase,
+  runMigrations,
+  seedDemoData,
 };
