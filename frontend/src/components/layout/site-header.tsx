@@ -24,6 +24,7 @@ function getNavigation(currentUser: AppUser | null) {
       { href: "/admin/reports", label: "Laporan" },
       { href: "/admin/verification", label: "Verifikasi" },
       { href: "/map", label: "Peta" },
+      { href: "/routing", label: "Rute A*" },
     ];
   }
 

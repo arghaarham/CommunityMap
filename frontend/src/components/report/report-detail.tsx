@@ -155,6 +155,19 @@ export function ReportDetail({ report, currentUser, admin = false }: { report: R
               <Link href={`/map?reportId=${report.id}`} className="mt-3 inline-block text-sm font-bold text-[var(--teal)]">
                 Buka di peta publik
               </Link>
+              <div className="mt-3">
+                <Link
+                  href={`/routing?reportIds=${report.id}&startLat=${report.coordinates.latitude}&startLng=${report.coordinates.longitude}`}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition ${
+                    admin
+                      ? "bg-[var(--teal)] text-white hover:bg-[#00857a] shadow-[0_4px_14px_rgba(0,107,98,0.35)]"
+                      : "border border-[var(--border)] text-[var(--teal)] hover:bg-[#f0fdf9]"
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M4.22 4.22l2.12 2.12"/><path d="M17.66 17.66l2.12 2.12"/><path d="M2 12h3"/><path d="M19 12h3"/><path d="M4.22 19.78l2.12-2.12"/><path d="M17.66 6.34l2.12-2.12"/></svg>
+                  {admin ? "Rencanakan Rute Peninjauan" : "Rute ke Laporan Ini"}
+                </Link>
+              </div>
             </div>
           </Card>
         </aside>

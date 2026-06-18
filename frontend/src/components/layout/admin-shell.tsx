@@ -4,6 +4,7 @@ import {
   BarChart3,
   ClipboardList,
   MapPinned,
+  Navigation,
   Settings,
   ShieldCheck,
 } from "lucide-react";
@@ -18,6 +19,7 @@ const adminNav = [
   { label: "Laporan Masuk", href: "/admin/reports", icon: ClipboardList },
   { label: "Verifikasi", href: "/admin/verification", icon: ShieldCheck },
   { label: "Peta Pantau", href: "/map", icon: MapPinned },
+  { label: "Rute", href: "/routing", icon: Navigation },
   { label: "Pengaturan", href: "/admin/settings", icon: Settings },
 ];
 

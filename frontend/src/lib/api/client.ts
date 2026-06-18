@@ -239,3 +239,75 @@ export async function searchUsers(query: string) {
   const data = await clientRequest<{ users: { username: string; name: string }[] }>(`/users/search?q=${encodeURIComponent(query)}`);
   return data.users;
 }
+
+// ── Routing (A*) ──────────────────────────────────────────────────────────────
+
+export type RoutingReport = {
+  id: string;
+  title: string;
+  lat: number;
+  lng: number;
+  status: string;
+  categorySlug: string;
+  address: string;
+  district: string;
+  createdAt: string;
+};
+
+export type RouteNode = {
+  id: string;
+  title: string;
+  lat: number;
+  lng: number;
+  status: string;
+  categorySlug: string;
+  distanceFromPrev: number;
+  cumulativeDistance: number;
+  order: number;
+};
+
+export type AStarIteration = {
+  iterasi: number;
+  dari: string;
+  simpulHidup: Array<{ id: string; title: string; gn: number; hn: number; fn: number }>;
+  simpulEkspan: string;
+  simpulEkspanTitle: string;
+  gnEkspan: number;
+  hnEkspan: number;
+  fnEkspan: number;
+};
+
+export type RouteResult = {
+  path: RouteNode[];
+  totalDistance: number;
+  iterations: AStarIteration[];
+  startPoint: { lat: number; lng: number };
+  algorithmInfo: {
+    name: string;
+    heuristic: string;
+    evaluation: string;
+    gDescription: string;
+    hDescription: string;
+    admissible: boolean;
+    admissibleReason: string;
+  };
+};
+
+export async function getRoutingReports(): Promise<RoutingReport[]> {
+  const data = await clientRequest<RoutingReport[]>("/routing/reports");
+  return data;
+}
+
+export async function getOptimalRoute(
+  startLat: number,
+  startLng: number,
+  reportIds: string[],
+): Promise<RouteResult> {
+  const params = new URLSearchParams({
+    startLat: String(startLat),
+    startLng: String(startLng),
+    reportIds: reportIds.join(","),
+  });
+  const data = await clientRequest<RouteResult>(`/routing/route?${params.toString()}`);
+  return data;
+}

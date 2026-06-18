@@ -12,6 +12,7 @@ const { adminRouter } = require("./modules/admin/admin.routes");
 const { uploadsRouter } = require("./modules/uploads/uploads.routes");
 const { chatsRouter } = require("./modules/chats/chats.routes");
 const { usersRouter } = require("./modules/users/users.routes");
+const { routingRouter } = require("./modules/routing/routing.routes");
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use("/api/admin", adminRouter);
 app.use("/api/uploads", uploadsRouter);
 app.use("/api/chats", chatsRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/routing", routingRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
