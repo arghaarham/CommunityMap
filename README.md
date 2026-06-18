@@ -124,3 +124,40 @@ Gunakan akun berikut untuk mencoba fitur (jika mode *seeding* berjalan):
 1.   18224079 - Rafi Putra Nugraha
 2.   13524100 - Arghawisesa Dwinanda Arham
 3.   13524090 - Nashiruddin Akram
+
+---
+
+## 📝 Penambahan Fitur: Perencana Rute A* (Tugas IF2211)
+
+Bagian ini merangkum komitmen ekspansi proyek secara besar-besaran untuk memenuhi tugas mata kuliah IF2211 Strategi Algoritma. Fitur ini diawali oleh _commit_ `feat: A* route planner (backend + frontend)` dan disempurnakan melalui beberapa perbaikan lanjutan.
+
+### Kondisi Awal Proyek (Sebelum Commit)
+Pada awalnya (versi mata kuliah ET3204), aplikasi **CommunityMap tidak memiliki fitur rute sama sekali**. Aplikasi hanya berfungsi sebagai dasbor pelaporan publik biasa di mana admin/petugas melihat lokasi pada peta titik per titik tanpa panduan arah yang logis untuk dikunjungi.
+
+### Pengembangan Baru & Optimalisasi Lanjutan (Sesudah Commit)
+Seluruh modul *routing* di-koding dari awal untuk mendukung pembuatan rute peninjauan menggunakan algoritma pencarian heuristik.
+
+#### 1. Pengembangan Backend & Algoritma A* (TSP Optimal)
+Sistem *backend* Node.js sekarang dilengkapi modul perhitungan rute menggunakan Algoritma A-Star. Algoritma A* secara khusus dirancang menggunakan **Pencarian Ruang Status (State-Space Search)** agar beroperasi layaknya algoritma penyelesaian *Traveling Salesperson Problem (TSP)* yang dijamin menghasilkan solusi terpendek secara absolut (Optimal Global). Pencarian dievaluasi dengan fungsi $f(n) = g(n) + h(n)$, di mana bobot $g(n)$ adalah Jarak Haversine aktual, dan heuristik $h(n)$ adalah estimasi sisa Jarak Manhattan. Batas pelaporan maksimal diterapkan hingga 12 titik untuk menghindari eksponensial faktorial yang menyebabkan batas waktu memori (OOM).
+* **File Baru/Terdampak:**
+  * `backend/src/modules/routing/routing.service.js` (Logika Priority Queue dan State-Space A*)
+  * `backend/src/modules/routing/routing.routes.js` (Router API REST)
+  * `backend/src/app.js` (Pendaftaran rute API)
+
+#### 2. Visualisasi Peta Terpadu (OSRM & Frontend)
+Membuat halaman perencana rute interaktif di *frontend* React. Daripada sekadar menarik garis imaginer yang lurus di atas perumahan warga, aplikasi sekarang terhubung dengan **API Open Source Routing Machine (OSRM)** yang bertugas membaca keluaran titik A* dan menarik garis mengikuti kelokan jalan raya nyata. Setiap segmen *waypoint* antar jalan diberikan garis rute dengan **warna khusus (Color-Coded)** yang terhubung langsung pada daftar langkah-demi-langkah interaktif di sebelah kanan peta.
+* **File Baru/Terdampak:**
+  * `frontend/src/app/routing/route-planner.tsx` (Logika map interaktif & OSRM API)
+  * `frontend/src/lib/api/client.ts` (API Client TypeScript)
+
+#### 3. Keamanan Otorisasi Khusus Admin
+Mengingat fitur penyusunan rute membutuhkan kalkulasi berat dan bersifat rahasia secara operasional, fitur ini yang mulanya tidak ada (dan sempat terekspos di navigasi publik) kini diisolasi eksklusif hanya untuk Administrator dan Dinas Pekerjaan Umum (DPU). 
+* **File Baru/Terdampak:**
+  * `frontend/src/app/routing/page.tsx` (Halaman dibungkus komponen otorisasi Admin)
+  * `frontend/src/components/layout/admin-shell.tsx` (Menu navigasi rute hanya muncul di sidebar dasbor Admin)
+  * `frontend/src/components/layout/site-header.tsx` (Penghapusan menu dari bilah atas warga)
+
+#### 4. Tema Antarmuka Profesional (UI/CSS)
+Desain antarmuka (UI) dari rute secara spesifik disesuaikan dengan nuansa korporat *AdminShell* yang rapi, terang, responsif, dan mudah dibaca tanpa ada jargon-jargon perhitungan matematika yang dapat membingungkan operator yang tidak memiliki latar belakang IT.
+* **File Baru/Terdampak:**
+  * `frontend/src/app/routing/routing.css` (Implementasi penataan flex/grid yang estetik dan adaptif)
